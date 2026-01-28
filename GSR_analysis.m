@@ -2,11 +2,11 @@
 clc
 clear
 close all
-path = 'C:\Users\t243f765\OneDrive - Wichita State University\Project_Misophonia\data_GSRledalab - Copy';
+path = 'C:\Users\t243f765\Desktop\data_GSRledalab';
 
-%% --------------------------Processing and CDA--------------------------%%
+%% Processing and extract CDA
 % path_data = '2025-10-30 CS12';
-% Ledalab(path, 'open', 'mat', 'downsample', 10,'filter',[2 5],'smooth', {'gauss', 10}, 'analyze','CDA', 'optimize',6, 'export_era', [1 15 .05 3]);
+Ledalab(path, 'open', 'mat', 'downsample', 10,'filter',[2 5],'smooth', {'gauss', 10}, 'analyze','CDA', 'optimize',6, 'export_era', [1 15 .05 3]);
 
 % Import all mat data from PATH, dowmsamples from 500 to 50Hz (factor 10);
 % Butterworth filter [2 5] for a 2rst order low-pass filter with 5Hz cutoff
@@ -20,8 +20,9 @@ path = 'C:\Users\t243f765\OneDrive - Wichita State University\Project_Misophonia
 % Export processed data to excel file as XLS (method 3).
 % Save the process step to batchmode_protocol.mat
 
-
-%% ----------------------------extract data--------------------------%%
+%% Visual Check
+VisualCheckGSR(path);
+%% extract data
 % pad XLS data together
 files = dir(fullfile(path, '*_era.xls'));
 data_all = cell(numel(files),1);
@@ -37,7 +38,7 @@ end
 
 alldata = vertcat(data_all{:});
 
-%% ---------------------------linear Mixed effect Model-------------------------%%
+%% linear Mixed effect Model
 Condition_Vec = alldata{:, 2}; % Condition 
 SCR_Vec       = alldata{:, 4}; % CDA.nSCR
 Subject_Vec   = alldata{:, 16};% Subject ID
