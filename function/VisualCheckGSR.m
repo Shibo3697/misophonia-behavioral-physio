@@ -22,7 +22,7 @@ function VisualCheckGSR(data_path)
         % Raw & Tonic
         subplot(3,1,1); 
         plot(d.time, d.conductance, 'k', d.time, a.tonicData, 'g', 'LineWidth', 2);
-        title(name, 'Interpreter', 'none'); axis tight;
+        title(name, 'Interpreter', 'none', 'FontSize', 16); axis tight;
 
         % Phasic & Events
         subplot(3,1,2); 
@@ -33,12 +33,12 @@ function VisualCheckGSR(data_path)
             xline(t, 'r--');
             patch([t t+15 t+15 t], [yl(1) yl(1) yl(2) yl(2)], 'r', 'FaceAlpha', 0.1, 'EdgeColor', 'none');
         end
-        title('Phasic');
+        title('Phasic', 'FontSize', 16);
 
         % Driver
         subplot(3,1,3); 
         stem(d.time, a.driver, 'm', 'Marker', 'none');
-        title('Driver'); linkaxes(findall(h, 'type', 'axes'), 'x');
+        title('Driver','FontSize', 16); linkaxes(findall(h, 'type', 'axes'), 'x');
 
         % Action
         commandwindow;

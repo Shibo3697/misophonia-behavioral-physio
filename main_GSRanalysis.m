@@ -2,7 +2,7 @@
 clc
 clear
 close all
-path = 'C:\Users\t243f765\OneDrive - Wichita State University\Project_Misophonia\misophonia data\data_GSR';
+path = 'C:\Users\admin\Desktop\data_GSR_test_raw';
 
 %% cut baseline
 files = dir(fullfile(path, '2025-*.mat'));
@@ -17,7 +17,7 @@ for k = 1:numel(files)
     save(file_path, 'data'); 
 end
 %% Processing and extract CD
-Ledalab(path, 'open', 'mat', 'downsample', 10,'filter',[2 5],'smooth', {'gauss', 10}, 'analyze','CDA', 'optimize',6, 'export_era', [1 15 .01 3]);
+Ledalab(path, 'open', 'mat', 'downsample', 10,'filter',[1 5],'smooth', {'adapt'}, 'analyze','CDA', 'optimize',6, 'export_era', [1 20 .01 3]);
 
 % Import all mat data from PATH, dowmsamples from 500 to 50Hz (factor 10);
 % Butterworth filter [2 5] for a 2rst order low-pass filter with 5Hz cutoff
@@ -26,111 +26,92 @@ Ledalab(path, 'open', 'mat', 'downsample', 10,'filter',[2 5],'smooth', {'gauss',
 % Reference of optimization: Benedek, M., & Kaernbach, C. (2010). Decomposition of skin conductance data by means of nonnegative deconvolution. psychophysiology, 47(4), 647-658.
 % Reference of CDA: Benedek, M. & Kaernbach, C. (2010). A continuous measure of phasic electrodermal activity. Journal of Neuroscience Methods, 190, 80-91.
 % Exports the event-related data:
-% Response window of 1 to 15 second after each marker
-% SCR amplitude threshold of .05 muS (P<0.05)
+% Response window of 1 to 18 second after each markers
+% SCR amplitude threshold of .01 muS
 % Export processed data to excel file as XLS (method 3).
 % Save the process step to batchmode_protocol.mat
 
 %% Visual Check
-VisualCheckGSR(path);
+% VisualCheckGSR(path);
 %% extract data
 % pad XLS data together
 files = dir(fullfile(path, '*_era.xls'));
-data_all = cell(numel(files),1);
+data_all = cell(numel(files), 1);
 
 for k = 1:numel(files)
-    data_all{k} = import_xls(fullfile(files(k).name)); % import_xls function
-    raw = import_xls(fullfile(files(k).name));
-    name_parts = split(files(k).name, '_'); 
-    sub_id = name_parts{2};
-    id_col = repmat({sub_id}, size(raw, 1), 1);
-    data_all{k} = [raw, id_col];
+    raw = readtable(fullfile(path, files(k).name), 'Sheet', 'CDA');
+    name_parts = split(files(k).name, '_');
+    raw.SubjectID = repmat(string(name_parts{2}), size(raw, 1), 1);
+    data_all{k} = raw;
 end
 
 alldata = vertcat(data_all{:});
 
+%% Build LMM Table
+LMM_Table = table( ...
+    alldata.SubjectID, ...
+    alldata.Event_Name, ...
+    alldata.CDA_nSCR, ...
+    alldata.CDA_AmpSum_muS_, ...
+    alldata.CDA_Tonic_muS_, ...
+    alldata.CDA_PhasicMax_muS_, ...
+    alldata.CDA_ISCR_muSxs_, ...
+    'VariableNames', {'Subject','Condition','CDA_nSCR','CDA_AmpSum','CDA_Tonic','CDA_PhasicMax','CDA_iSCR'});
 %% linear Mixed effect Model
-Condition_ID = alldata{:, 3}; % Condition 
-SubjectID       = alldata{:, 16};% Subject ID
-CDA_nSCR        = alldata{:, 4}; 
-CDA_AmpSum      = alldata{:, 6};
-CDA_Tonic       = alldata{:, 10};
-CDA_PhasicMax   = alldata{:, 9};
-CDA_iSCR        = alldata{:, 8};
-
-CDA_nSCR      = log1p(CDA_nSCR); 
-CDA_AmpSum    = log1p(CDA_AmpSum);
-CDA_PhasicMax = log1p(CDA_PhasicMax);
-CDA_iSCR      = log1p(CDA_iSCR);
-CDA_Tonic     = log1p(CDA_Tonic);
-
-LMM_Table = table(SubjectID, Condition_ID, CDA_nSCR, CDA_AmpSum, CDA_Tonic, CDA_PhasicMax, CDA_iSCR, ...
-    'VariableNames', {'Subject', 'Condition', 'CDA_nSCR', 'CDA_AmpSum', 'CDA_Tonic', 'CDA_PhasicMax', 'CDA_iSCR'});
-
-LMM_Table.Condition = categorical(LMM_Table.Condition);
-
-% Run the Linear Mixed-effects Model
-% CDA.CDA_nSCR
-disp('====== Model Results: CDA_nSCR ======');
-% model_nSCR = fitglme(LMM_Table, 'CDA_nSCR ~ Condition + (1|Subject)', 'Distribution', 'Poisson');
-model_nSCR = fitlme(LMM_Table, 'CDA_nSCR ~ Condition + (1|Subject)');
-disp(model_nSCR.Coefficients);
-
-% 2. CDA.AmpSum
-disp('====== Model Results: CDA.AmpSum ======');
-model_AmpSum = fitlme(LMM_Table, 'CDA_AmpSum ~ Condition + (1|Subject)');
-disp(model_AmpSum.Coefficients);
-
-% 3. CDA.Tonic
-disp('====== Model Results: CDA.Tonic ======');
-model_Tonic = fitlme(LMM_Table, 'CDA_Tonic ~ Condition + (1|Subject)');
-disp(model_Tonic.Coefficients);
-
-% 4. CDA.PhasicMax
-disp('====== Model Results: CDA.PhasicMax ======');
-model_PhasicMax = fitlme(LMM_Table, 'CDA_PhasicMax ~ Condition + (1|Subject)');
-disp(model_PhasicMax.Coefficients);
-
-% 5. CDA.iSCR
-disp('====== Model Results: CDA.iSCR ======');
-model_iSCR = fitlme(LMM_Table, 'CDA_iSCR ~ Condition + (1|Subject)');
-disp(model_iSCR.Coefficients);
+models = {'CDA_nSCR','CDA_AmpSum','CDA_Tonic','CDA_PhasicMax','CDA_iSCR'};
+for m = 1:numel(models)
+    fprintf('====== Model Results: %s ======\n', models{m});
+    mdl = fitlme(LMM_Table, sprintf('%s ~ Condition + (1|Subject)', models{m}));
+    disp(mdl.Coefficients);
+end
 
 %% Visualization
 figure('Color', 'w', 'Name', 'LMM Result');
+vars    = {'CDA_nSCR','CDA_AmpSum','CDA_Tonic','CDA_PhasicMax','CDA_iSCR'};
+titles  = {'CDA.nSCR','CDA.AmpSum','CDA.Tonic','CDA.PhasicMax','CDA.iSCR'};
+ylabels = {'nSCR', '\muS', '\muS', '\muS', '\muS \times s'};
 
-% 1.CDA.nSCR 
-subplot(2,3,1)
-boxplot(LMM_Table.CDA_nSCR, LMM_Table.Condition);
-title('CDA.nSCR','FontSize',16);
-ylabel('nSCR','FontSize',16); % the number of significant (above-threshold) SCRs
-grid on;
+for v = 1:numel(vars)
+    subplot(2, 3, v);
+    boxplot(LMM_Table.(vars{v}), LMM_Table.Condition);
+    title(titles{v}, 'FontSize', 16);
+    ylabel(ylabels{v}, 'FontSize', 16);
+    grid on;
+end
 
-% 2. CDA.AmpSum
-subplot(2, 3, 2);
-boxplot(LMM_Table.CDA_AmpSum, LMM_Table.Condition);
-title('CDA.AmpSum','FontSize',16);
-ylabel('\muS', 'FontSize',16);
-grid on;
-
-% 3. CDA.Tonic
-subplot(2, 3, 3);
-boxplot(LMM_Table.CDA_Tonic, LMM_Table.Condition);
-title('CDA.Tonic','FontSize',16);
-ylabel('\muS','FontSize',16);
-grid on;
-
-% 4. CDA.PhasicMax
-subplot(2, 3, 4);
-boxplot(LMM_Table.CDA_PhasicMax, LMM_Table.Condition);
-title('CDA.PhasicMax','FontSize',16);
-ylabel('\muS','FontSize',16);
-grid on;
-
-% 5. CDA.iSCR
-subplot(2, 3, 5);
-boxplot(LMM_Table.CDA_iSCR, LMM_Table.Condition);
-title('CDA.iSCR','FontSize',16);
-ylabel('\muS \times s','FontSize',16);
-xlabel('Sound categories','FontSize',16);
-grid on;
+%% plot2
+% 
+% figure('Color', 'w', 'Name', 'Data Distribution Scatter', 'Position', [100, 100, 1200, 800]);
+% 
+% vars    = {'CDA_nSCR','CDA_AmpSum','CDA_Tonic','CDA_PhasicMax','CDA_iSCR'};
+% titles  = {'CDA.nSCR','CDA.AmpSum','CDA.Tonic','CDA.PhasicMax','CDA.iSCR'};
+% ylabels = {'Count', '\muS', '\muS', '\muS', '\muS \times s'};
+% 
+% cond_cats = categories(LMM_Table.Condition);
+% cond_idx  = grp2idx(LMM_Table.Condition); 
+% 
+% for v = 1:numel(vars)
+%     subplot(2, 3, v);
+% 
+% 
+%     swarmchart(cond_idx, LMM_Table.(vars{v}), 15, 'filled', ...
+%         'MarkerFaceAlpha', 0.4, 'XJitterWidth', 0.6);
+%     hold on;
+% 
+%     boxplot(LMM_Table.(vars{v}), cond_idx, 'Colors', 'k', 'Symbol', '', 'Positions', 1:numel(cond_cats));
+% 
+% 
+%     xticks(1:numel(cond_cats));
+%     xticklabels(cond_cats);
+% 
+%     title(titles{v}, 'FontSize', 16, 'FontWeight', 'bold');
+%     ylabel(ylabels{v}, 'FontSize', 14);
+% 
+%         yl = ylim;
+%     ylim([min(0, yl(1)) - 0.5, yl(2) + 0.5]); 
+%     grid on;
+%     hold off;
+% end
+% 
+% subplot(2, 3, 5);
+% xlabel('Sound categories', 'FontSize', 16);

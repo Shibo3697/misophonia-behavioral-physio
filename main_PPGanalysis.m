@@ -1,6 +1,6 @@
 clc; clear;
 %% Data folder
-data_path = 'C:\Users\t243f765\OneDrive - Wichita State University\Project_Misophonia\misophonia data\data_PPG';
+data_path = '/Users/zhoushibo/Library/CloudStorage/OneDrive-WichitaStateUniversity/Project_Misophonia/misophonia data/data_PPG';
 files = dir(fullfile(data_path, '*.mat'));
 fs = 500;
 
@@ -90,7 +90,7 @@ for k = 1:numel(files)
     hold off; 
     grid on;
     zoom on;
-    title(sprintf('File %d/%d: %s', k, numel(files), files(k).name), 'Interpreter');
+    title(sprintf('File %d/%d: %s', k, numel(files), files(k).name), 'Interpreter', 'none');
     xlabel('Time (s)');
     ylim([10, 20]); 
     fprintf('Check File %d/%d: %s\n', k, numel(files), files(k).name);
@@ -103,12 +103,11 @@ for k = 1:numel(files)
 end
 
 %% save in CSV
-%mask = ~ismember(Event_IBI_Results(:,1), excluded_files);
+mask = ~ismember(Event_IBI_Results(:,1), excluded_files);
 ResultTable = cell2table(Event_IBI_Results, ...
     'VariableNames', {'Filename','SubjectID', 'Condition', 'EventID', 'StartTime', 'Mean_IBI_s', 'Mean_HR_bpm'});
 
-savefile = "C:\Users\t243f765\OneDrive - Wichita State University\Project_Misophonia\misophonia data\data_PPG";
-save_name = fullfile(savefile, 'Event_Mean_IBI.csv');
+save_name = fullfile(data_path, 'Event_Mean_IBI.csv');
 writetable(ResultTable, save_name);
 fprintf('result in: %s\n', save_name);
 
@@ -123,12 +122,115 @@ ResultTable.SubjectID = categorical(ResultTable.SubjectID);
 lmm = fitlme(ResultTable, 'Mean_HR_bpm ~ Condition + (1|SubjectID)');
 
 % Display Coefficients (Shows the difference between Conditions and Neutral)
-disp(lmm.Coefficients);
+disp(lmm);
+H = [0, 1, -1];
+p_trig_unpleas = coefTest(lmm, H);
+fprintf('trigger vs unpleasant: p = %.6f\n', p_trig_unpleas);
 
-% 6. Visualization
+%% Visualization
 figure('Color', 'w', 'Name', 'LMM Result');
 boxplot(ResultTable.Mean_HR_bpm, ResultTable.Condition);
 ylabel('BPM','FontSize',16);
 xlabel('Sound categories','FontSize',16);
 title('Heart Rate','FontSize',16);
 grid on;
+hold on;
+conds = categories(ResultTable.Condition);
+subs = unique(ResultTable.SubjectID);
+
+for i = 1:length(subs)
+    sub_id = subs(i);
+    sub_idx = ResultTable.SubjectID == sub_id;
+    sub_data = ResultTable(sub_idx, :);
+    
+    x_vals = [];
+    y_vals = [];
+
+    for j = 1:length(conds)
+        cond_idx = sub_data.Condition == conds{j};
+        if any(cond_idx)
+            y_mean = mean(sub_data.Mean_HR_bpm(cond_idx), 'omitnan');
+            x_vals(end+1) = j;      
+            y_vals(end+1) = y_mean; % average HR in each condition of each subject
+        end
+    end
+    
+    if ~isempty(x_vals)
+        plot(x_vals, y_vals, '-o', ...
+            'Color', [0.6 0.6 0.6], ...     
+            'MarkerEdgeColor', [0.3 0.3 0.3], ... 
+            'MarkerFaceColor', 'w', ...     
+            'LineWidth', 1, ...
+            'MarkerSize', 5);
+    end
+end
+
+% fitted lines
+figure('Color', 'w', 'Name', 'LMM Fitted Lines');
+hold on;
+
+subs = unique(ResultTable.SubjectID);
+n_subs = numel(subs);
+colors = lines(n_subs);
+conds = {'neutral','trigger','unpleasant'};
+
+fe = fixedEffects(lmm);
+fixed_y = [fe(1), fe(1)+fe(2), fe(1)+fe(3)];
+
+[~, ~, re_tbl] = randomEffects(lmm);
+
+for i = 1:n_subs
+    idx = strcmp(string(re_tbl.Level), string(subs(i)));
+    rand_intercept = re_tbl.Estimate(idx);
+
+    y = fixed_y + rand_intercept;
+
+    plot(1:3, y, '-o', ...
+        'Color', colors(i,:), ...
+        'LineWidth', 1.5, ...
+        'MarkerFaceColor', colors(i,:), ...
+        'DisplayName', string(subs(i)));
+end
+
+% group fixed effect
+plot(1:3, fixed_y, '-s', ...
+    'Color', 'k', 'LineWidth', 3, ...
+    'MarkerFaceColor', 'k', ...
+    'DisplayName', 'Group (Fixed Effect)');
+
+xticks(1:3);
+xticklabels(conds);
+xlabel('Condition', 'FontSize', 14);
+ylabel('Mean HR (bpm)', 'FontSize', 14);
+grid on;
+legend('Location', 'bestoutside', 'FontSize', 9);
+
+% P-value plot
+sig_pairs = [1, 3, 3.3084e-05;   % neutral vs unpleasant
+             2, 3, p_trig_unpleas];  % trigger vs unpleasant
+y_lim = ylim;
+y_top = y_lim(2);
+step  = (y_top - y_lim(1)) * 0.06;
+
+for ip = 1:size(sig_pairs, 1)
+    a = sig_pairs(ip, 1);
+    b = sig_pairs(ip, 2);
+    p = sig_pairs(ip, 3);
+
+    if     p < 0.001; lbl = '***';
+    elseif p < 0.01;  lbl = '**';
+    elseif p < 0.05;  lbl = '*';
+    else;             lbl = 'ns';
+    end
+
+    y_bar = y_top + (ip - 0.5) * step;
+
+    line([a b], [y_bar y_bar],           'Color','k','LineWidth',1.2,'HandleVisibility','off');
+    line([a a], [y_bar-step*0.2, y_bar], 'Color','k','LineWidth',1.2,'HandleVisibility','off');
+    line([b b], [y_bar-step*0.2, y_bar], 'Color','k','LineWidth',1.2,'HandleVisibility','off');
+    text((a+b)/2, y_bar+step*0.15, lbl, ...
+        'HorizontalAlignment','center','FontSize',13,'FontWeight','bold');
+end
+
+ylim([y_lim(1), y_top + size(sig_pairs,1)*step + step*0.8]);
+hold off;
