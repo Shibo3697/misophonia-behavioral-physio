@@ -17,7 +17,7 @@ for k = 1:numel(files)
     save(file_path, 'data'); 
 end
 %% Processing and extract CD
-% Ledalab(path, 'open', 'mat', 'downsample', 10,'filter',[2 5],'smooth', {'gauss', 10}, 'analyze','CDA', 'optimize',6, 'export_era', [1 15 .01 3]);
+Ledalab(path, 'open', 'mat', 'downsample', 10,'filter',[2 5],'smooth', {'gauss', 10}, 'analyze','CDA', 'optimize',6, 'export_era', [1 15 .01 3]);
 
 % Import all mat data from PATH, dowmsamples from 500 to 50Hz (factor 10);
 % Butterworth filter [2 5] for a 2rst order low-pass filter with 5Hz cutoff
@@ -32,7 +32,7 @@ end
 % Save the process step to batchmode_protocol.mat
 
 %% Visual Check
-% VisualCheckGSR(path);
+VisualCheckGSR(path);
 %% extract data
 % pad XLS data together
 files = dir(fullfile(path, '*_era.xls'));

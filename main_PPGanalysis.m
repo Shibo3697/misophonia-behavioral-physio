@@ -66,41 +66,41 @@ for k = 1:num_files
 end
 
 %% plot
-% excluded_files = {};
-% figure; 
-% 
-% for k = 1:numel(files) 
-%     load(fullfile(data_path, files(k).name)); 
-%     ppg = data.ppg; 
-%     peaks = peaks_all{k}; 
-%     t = (0:length(ppg)-1)/fs;
-% 
-%     plot(t, ppg, 'b'); 
-%     hold on; 
-%     plot(t(peaks), ppg(peaks), 'or');
-%     events = data.event;
-%     y_lims = ylim;
-%     for j = 1:length(events)
-%             x_start = events(j).time;     
-%             x_end = x_start + segment_duration;
-%             patch([x_start x_end x_end x_start], [y_lims(1) y_lims(1) y_lims(2) y_lims(2)], ...
-%                   'k', 'FaceAlpha', 0.1, 'EdgeColor', 'none');
-%             text(x_start, y_lims(2), events(j).name, 'VerticalAlignment','top');
-%     end
-%     hold off; 
-%     grid on;
-%     zoom on;
-%     title(sprintf('File %d/%d: %s', k, numel(files), files(k).name), 'Interpreter');
-%     xlabel('Time (s)');
-%     ylim([10, 20]); 
-%     fprintf('Check File %d/%d: %s\n', k, numel(files), files(k).name);
-% 
-%     choice = input('  Enter is keep, x is remove ', 's');
-%     if strcmpi(choice, 'x')
-%         excluded_files{end+1} = files(k).name;
-%         fprintf(' remove\n');
-%     end
-% end
+excluded_files = {};
+figure; 
+
+for k = 1:numel(files) 
+    load(fullfile(data_path, files(k).name)); 
+    ppg = data.ppg; 
+    peaks = peaks_all{k}; 
+    t = (0:length(ppg)-1)/fs;
+
+    plot(t, ppg, 'b'); 
+    hold on; 
+    plot(t(peaks), ppg(peaks), 'or');
+    events = data.event;
+    y_lims = ylim;
+    for j = 1:length(events)
+            x_start = events(j).time;     
+            x_end = x_start + segment_duration;
+            patch([x_start x_end x_end x_start], [y_lims(1) y_lims(1) y_lims(2) y_lims(2)], ...
+                  'k', 'FaceAlpha', 0.1, 'EdgeColor', 'none');
+            text(x_start, y_lims(2), events(j).name, 'VerticalAlignment','top');
+    end
+    hold off; 
+    grid on;
+    zoom on;
+    title(sprintf('File %d/%d: %s', k, numel(files), files(k).name), 'Interpreter');
+    xlabel('Time (s)');
+    ylim([10, 20]); 
+    fprintf('Check File %d/%d: %s\n', k, numel(files), files(k).name);
+
+    choice = input('  Enter is keep, x is remove ', 's');
+    if strcmpi(choice, 'x')
+        excluded_files{end+1} = files(k).name;
+        fprintf(' remove\n');
+    end
+end
 
 %% save in CSV
 %mask = ~ismember(Event_IBI_Results(:,1), excluded_files);
