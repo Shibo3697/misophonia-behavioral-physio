@@ -32,7 +32,7 @@ Ledalab(path, 'open', 'mat', 'downsample', 10,'filter',[1 5],'smooth', {'adapt'}
 % Save the process step to batchmode_protocol.mat
 
 %% Visual Check
-% VisualCheckGSR(path);
+VisualCheckGSR(path);
 %% extract data
 % pad XLS data together
 files = dir(fullfile(path, '*_era.xls'));
